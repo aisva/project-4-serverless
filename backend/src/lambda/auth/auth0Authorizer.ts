@@ -9,15 +9,12 @@ import { JwtPayload } from '../../auth/JwtPayload'
 
 const logger = createLogger('auth')
 
-// TODO: Provide a URL that can be used to download a certificate that can be used
-// to verify JWT token signature.
-// To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
 const jwksUrl = 'https://dev-qfv-c16y.auth0.com/.well-known/jwks.json'
 
 export const handler = async (
   event: CustomAuthorizerEvent
 ): Promise<CustomAuthorizerResult> => {
-  logger.info('Authorizing a user', event.authorizationToken)
+  logger.info('Authorizing a user', { token: event.authorizationToken })
   try {
     const jwtToken = await verifyToken(event.authorizationToken)
     logger.info('User was authorized', jwtToken)
@@ -57,11 +54,15 @@ export const handler = async (
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   const token = getToken(authHeader)
   const jwt: Jwt = decode(token, { complete: true }) as Jwt
-
-  // TODO: Implement token verification
-  // You should implement it similarly to how it was implemented for the exercise for the lesson 5
-  // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
-  return undefined
+  const response = await Axios.get(jwksUrl)
+  if (response == null || response.data == null || response.data.keys == null) throw new Error('Unable to fetch JWKS')
+  const keyList = response.data.keys;
+  if (keyList == null || keyList.length === 0) throw new Error('Invalid JWKS')
+  const signingKeys = keyList.filter(key => key.use === 'sig' && key.kty === 'RSA' && key.kid === jwt.header.kid && key.x5c && key.x5c.length);
+  if (signingKeys == null || signingKeys.length === 0) throw new Error('Unable to find a signing key')
+  const certificate = signingKeys[0].x5c[0]
+  verify(token, certificateToPEM(certificate), { algorithms: ['RS256'] })
+  return jwt.payload
 }
 
 function getToken(authHeader: string): string {
@@ -74,4 +75,11 @@ function getToken(authHeader: string): string {
   const token = split[1]
 
   return token
+}
+
+// Copyright (c) 2017 Shawn Meyer https://github.com/sgmeyer/auth0-node-jwks-rs256/blob/master/src/lib/utils.js
+function certificateToPEM(certificate): string {
+  certificate = certificate.match(/.{1,64}/g).join('\n');
+  certificate = `-----BEGIN CERTIFICATE-----\n${certificate}\n-----END CERTIFICATE-----\n`;
+  return certificate;
 }
