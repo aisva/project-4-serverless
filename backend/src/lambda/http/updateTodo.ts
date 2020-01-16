@@ -1,13 +1,38 @@
 import 'source-map-support/register'
-
-import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
-
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
+import { isValidTodoItem, updateTodo } from '../../businessLogic/todo'
+import { getUserId } from '../utils'
+import { cors } from 'middy/middlewares'
+import * as middy from 'middy'
+import { createLogger } from '../../utils/logger'
 
-export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+const logger = createLogger('updateTodo')
+
+export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  logger.info('Processing event', event)
   const todoId = event.pathParameters.todoId
-  const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
+  const userId = getUserId(event)
+  const updatedTodoRequest: UpdateTodoRequest = JSON.parse(event.body)
+  const validTodoItem: boolean = await isValidTodoItem(todoId, userId)
+  if (!validTodoItem) {
+    logger.error("Unable to fetch todo item", { todoId: todoId, userId: userId })
+    return {
+      statusCode: 404,
+      body: JSON.stringify({
+        error: 'Unable to fetch todo item'
+      })
+    }
+  }
+  await updateTodo(updatedTodoRequest, todoId, userId)
+  return {
+    statusCode: 204,
+    body: null
+  }
+})
 
-  // TODO: Update a TODO item with the provided id using values in the "updatedTodo" object
-  return undefined
-}
+handler.use(
+  cors({
+    credentials: true
+  })
+)

@@ -6,13 +6,13 @@ import { cors } from 'middy/middlewares'
 import { getTodos } from '../../businessLogic/todo'
 import { getUserId } from '../utils'
 
-const logger = createLogger('createTodo')
+const logger = createLogger('getTodos')
 
 export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  logger.info('Processing event: ', event)
+  logger.info('Processing event', event)
   const todos = await getTodos(getUserId(event))
   return {
-    statusCode: 201,
+    statusCode: 200,
     body: JSON.stringify({
       items: todos
     })
