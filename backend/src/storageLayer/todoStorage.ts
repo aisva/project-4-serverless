@@ -7,7 +7,7 @@ export class TodoStorage {
   constructor(
     private readonly s3: AWS.S3 = createS3(),
     private readonly attachmentsBucket: string = process.env.ATTACHMENTS_S3_BUCKET,
-    private readonly signedUrlExpiration: string = process.env.SIGNED_URL_EXPIRATION
+    private readonly signedUrlExpiration: number = parseInt(process.env.SIGNED_URL_EXPIRATION)
   ) { }
 
   getUploadUrl(todoId: string) {
