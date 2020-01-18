@@ -6,9 +6,10 @@ import { createLogger } from '../../utils/logger'
 import * as middy from 'middy'
 import { cors } from 'middy/middlewares'
 
-const logger = createLogger('deleteTodo')
+const logger = createLogger('generateUploadUrl')
 
 export const handler = middy(async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  logger.info('Processing event', event)
   const todoId = event.pathParameters.todoId
   const userId = getUserId(event)
   const validTodoItem: boolean = await isValidTodoItem(todoId, userId)
